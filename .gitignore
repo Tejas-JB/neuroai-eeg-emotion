@@ -1,0 +1,36 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# SEED dataset (do not redistribute)
+data/*.mat
+data/SEED*/
+data/ExtractedFeatures/
+data/Preprocessed_EEG/
+
+# Model checkpoints (regenerable)
+results/*.pt
+
+# Keep example PNGs tracked: results/*.png is NOT ignored
