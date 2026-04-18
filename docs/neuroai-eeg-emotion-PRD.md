@@ -112,26 +112,50 @@ The SEED dataset provides pre-extracted **Differential Entropy (DE)** features. 
 
 ### 4.3 Labels
 
-- Stored in a separate label file (label.mat or embedded in session files)
-- 15 labels per session (one per film clip)
-- Values: -1 (negative), 0 (neutral), +1 (positive)
-- Labels are mapped to 0/1/2 internally for classification
+- Labels are defined by the SEED experimental protocol, NOT stored in a separate label.mat file
+- The label order per session is the SAME for all subjects and all sessions: `[1, 0, -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 0, 1, -1]`
+  - Mapped to our classes: `[2, 1, 0, 0, 1, 2, 0, 1, 2, 2, 1, 0, 1, 2, 0]` (where 0=negative, 1=neutral, 2=positive)
+- This maps to 15 trials per session (15 film clips)
+- The label-to-trial mapping is confirmed in SEED_stimulation.xlsx and the original SEED paper (Zheng & Lu, 2015)
+- Labels may also be embedded inside each .mat file under a key like `label` — check for this and use it if present, otherwise use the hardcoded protocol labels above
 
 ### 4.4 Expected File Structure
 
 ```
-SEED_EEG/
-├── Preprocessed_EEG/          # Preprocessed signals (NOT used)
-│   ├── 1_20131027.mat
-│   └── ...
-├── ExtractedFeatures/         # ← PRIMARY INPUT
-│   ├── 1_20131027.mat         # Subject 1, session date
-│   └── ...
-├── label.mat                  # Emotion labels
-└── channel_62_pos.locs        # Channel positions
+data/
+├── ExtractedFeatures_1s/          # ← PRIMARY INPUT (download this folder)
+│   ├── 1_20131027.mat             # Subject 1, Session 1 (Oct 27, 2013)
+│   ├── 1_20131030.mat             # Subject 1, Session 2
+│   ├── 1_20131107.mat             # Subject 1, Session 3
+│   ├── 2_20140404.mat             # Subject 2, Session 1
+│   ├── 2_20140413.mat             # Subject 2, Session 2
+│   ├── 2_20140419.mat             # Subject 2, Session 3
+│   ├── ...                        # Pattern: {subject_id}_{YYYYMMDD}.mat
+│   └── 15_XXXXXXXX.mat            # Subject 15, Session 3
+├── channel-order.xlsx             # 62-channel electrode positions (10 KB)
+├── SEED_stimulation.xlsx          # Film clip details + emotion labels (26 KB)
+└── subject-id-gender-seed.txt     # Subject demographics (66 bytes)
 ```
 
-**Note:** The exact internal key structure of the .mat files must be inspected at runtime. The data loader must handle both scipy.io.loadmat format and HDF5 format (MATLAB v7.3+).
+**File naming convention:** `{subject_id}_{session_date}.mat`
+- Subject IDs: 1 through 15
+- Each subject has exactly 3 sessions (3 dates)
+- 45 total .mat files (15 subjects × 3 sessions) + possibly 2 extra sessions = 47 files total
+- Each file is approximately 60-61 MB
+- Total folder size: ~2.8 GB
+
+**Internal .mat file structure (CRITICAL — must be inspected at runtime):**
+- Each .mat file contains 15 trial keys (one per film clip)
+- Key naming pattern is likely: `de_LDS1`, `de_LDS2`, ..., `de_LDS15` OR `de_movingAv1`, ..., `de_movingAv15` OR similar prefixed keys
+- Each trial value is a numpy array of shape approximately (N_windows, 62, 5) where:
+  - N_windows = number of 1-second windows in that film clip (varies per clip, roughly 50-240)
+  - 62 = EEG channels
+  - 5 = frequency bands (delta, theta, alpha, beta, gamma)
+- The data loader MUST: load one file, print ALL keys, print the shape of the first non-metadata key, and adapt accordingly
+- Files may also contain metadata keys like `__header__`, `__version__`, `__globals__` — skip these
+- Try `scipy.io.loadmat()` first; if it fails, fall back to `h5py.File()` (MATLAB v7.3 / HDF5 format)
+
+**Note:** The exact key names WILL vary. The data loader must discover keys dynamically, not hardcode them.
 
 ### 4.5 Data Processing Pipeline
 

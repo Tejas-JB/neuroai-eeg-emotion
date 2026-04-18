@@ -1,12 +1,12 @@
-MLP test accuracy: 0.3333
+MLP test accuracy: 0.9804
 
               precision    recall  f1-score   support
 
-    Negative     0.0000    0.0000    0.0000       200
-     Neutral     0.0000    0.0000    0.0000       200
-    Positive     0.3333    1.0000    0.5000       200
+    Negative     0.9601    0.9834    0.9716     10080
+     Neutral     0.9838    0.9659    0.9748      9936
+    Positive     0.9972    0.9912    0.9942     10530
 
-    accuracy                         0.3333       600
-   macro avg     0.1111    0.3333    0.1667       600
-weighted avg     0.1111    0.3333    0.1667       600
+    accuracy                         0.9804     30546
+   macro avg     0.9804    0.9802    0.9802     30546
+weighted avg     0.9806    0.9804    0.9804     30546
 

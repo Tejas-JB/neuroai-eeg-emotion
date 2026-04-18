@@ -83,8 +83,9 @@ Print the version of each package. Verify no import errors.
 Create `.gitignore` with standard Python ignores plus:
 - `venv/`
 - `data/*.mat`
-- `data/SEED*/`
-- `data/ExtractedFeatures/`
+- `data/ExtractedFeatures_1s/`
+- `data/ExtractedFeatures_4s/`
+- `data/*.xlsx`
 - `results/*.pt` (checkpoints)
 - `__pycache__/`
 - `.DS_Store`
@@ -142,45 +143,55 @@ In `src/data_loader.py`, implement a function `generate_synthetic_data()`:
 In the same `src/data_loader.py`, implement a function `load_seed_data()`:
 
 **Inputs:**
-- `data_path` (str): path to the directory containing SEED .mat files (ExtractedFeatures folder)
-- `label_path` (str, optional): path to label.mat if separate
+- `data_path` (str): path to the ExtractedFeatures_1s directory containing SEED .mat files
+- `label_path` (str, optional): path to label file if separate
+
+**SEED label protocol (hardcoded fallback):**
+The emotion labels per session follow a fixed protocol identical for all subjects/sessions:
+```python
+SEED_LABELS = [1, 0, -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 0, 1, -1]
+# Mapped to 0-indexed: [2, 1, 0, 0, 1, 2, 0, 1, 2, 2, 1, 0, 1, 2, 0]
+# Where: 0=negative, 1=neutral, 2=positive
+```
 
 **Behavior:**
 
-1. **Discover .mat files:** Scan `data_path` for all .mat files. Sort them for deterministic ordering.
+1. **Discover .mat files:** Scan `data_path` for all .mat files. Sort them for deterministic ordering. Expected: 45-47 files named like `{subject}_{date}.mat` (e.g., `1_20131027.mat`).
 
 2. **Load each .mat file:** 
    - First try `scipy.io.loadmat(filepath)` 
    - If that fails (MATLAB v7.3), fall back to `h5py.File(filepath, 'r')`
-   - Print the keys found in the first file for debugging
+   - On the FIRST file only: print ALL keys found for debugging
 
-3. **Extract DE features per trial:**
-   - Each .mat file contains one session (15 trials for 15 film clips)
-   - The keys for each trial may be named like `de_LDS1`, `de_LDS2`, ..., `de_LDS15` or similar
-   - Each trial's data has shape approximately (N_windows, 62, 5) or (N_windows, 310)
-   - If shape is (N_windows, 62, 5): reshape to (N_windows, 310) by flattening last two dims
-   - If shape is already (N_windows, 310): use as-is
-   - **CRITICAL: The exact key names and shapes MUST be inspected at runtime.** Print the keys and the shape of the first value found. Adapt accordingly. Do not hardcode assumptions about key names.
+3. **Filter trial keys:**
+   - Each .mat file contains 15 trial keys + metadata keys
+   - SKIP metadata keys: `__header__`, `__version__`, `__globals__`
+   - The trial keys may be named like `de_LDS1`, ..., `de_LDS15` or `de_movingAv1`, ..., `de_movingAv15` or other prefixed patterns
+   - Strategy: collect all keys that are NOT metadata, sort them, and assume they map to the 15 trials in order
+   - VERIFY: exactly 15 non-metadata keys per file. If not, print a warning and skip the file.
 
-4. **Load labels:**
-   - Look for a `label.mat` file in the data directory or parent directory
-   - The label array should have 15 values per session (one per film clip)
-   - Labels are -1, 0, +1 → map to 0, 1, 2
-   - If labels are embedded in session files under a key like `label`, extract from there
+4. **Extract DE features per trial:**
+   - Each trial's data has shape approximately (N_windows, 62, 5) where N_windows varies per clip (roughly 50-240 for 1-second windows)
+   - If shape is 3D (N_windows, 62, 5): reshape to (N_windows, 310) by flattening last two dims
+   - If shape is 2D (N_windows, 310): use as-is
+   - If shape is transposed or different: print shape, try to adapt (the 62 and 5 dims should be identifiable)
 
-5. **Assign labels to windows:**
-   - Each trial has N_windows of DE features
-   - All windows in a trial get the same emotion label (the label for that film clip)
+5. **Assign labels:**
+   - First check if a `label` key exists in the .mat file — if so, use it
+   - Otherwise use the hardcoded SEED_LABELS protocol above
+   - Map labels: -1 → 0 (negative), 0 → 1 (neutral), +1 → 2 (positive)
+   - Each trial's N_windows all get the same label (the label for that film clip)
 
 6. **Aggregate:**
    - Stack all windows from all trials from all sessions
    - Output X (total_samples, 310) and y (total_samples,) 
 
 7. **Print summary:**
+   - Number of .mat files loaded
    - Total samples
-   - Samples per class
+   - Samples per class (should be roughly balanced but not perfectly)
    - Feature shape
-   - Number of sessions loaded
+   - Value range of features
 
 ### Step 2.3: Build Unified Data Interface
 
@@ -188,7 +199,7 @@ Implement a function `load_data()`:
 
 **Inputs:**
 - `use_synthetic` (bool, default False)
-- `data_path` (str, default "data/")
+- `data_path` (str, default "data/ExtractedFeatures_1s/")
 - `test_size` (float, default 0.2)
 - `seed` (int, default 42)
 

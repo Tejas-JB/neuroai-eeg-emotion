@@ -28,7 +28,10 @@ Thumbs.db
 data/*.mat
 data/SEED*/
 data/ExtractedFeatures/
+data/ExtractedFeatures_1s/
 data/Preprocessed_EEG/
+dataset/
+results/*.log
 
 # Model checkpoints (regenerable)
 results/*.pt
