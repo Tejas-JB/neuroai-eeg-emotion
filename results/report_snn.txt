@@ -1,12 +1,12 @@
-SNN test accuracy: 0.3333
+SNN test accuracy: 0.9310
 
               precision    recall  f1-score   support
 
-    Negative     0.3333    1.0000    0.5000       200
-     Neutral     0.0000    0.0000    0.0000       200
-    Positive     0.0000    0.0000    0.0000       200
+    Negative     0.8861    0.9498    0.9168     10080
+     Neutral     0.9362    0.8943    0.9148      9936
+    Positive     0.9737    0.9477    0.9605     10530
 
-    accuracy                         0.3333       600
-   macro avg     0.1111    0.3333    0.1667       600
-weighted avg     0.1111    0.3333    0.1667       600
+    accuracy                         0.9310     30546
+   macro avg     0.9320    0.9306    0.9307     30546
+weighted avg     0.9326    0.9310    0.9312     30546
 

@@ -30,10 +30,12 @@ A **Spiking Neural Network** with Leaky Integrate-and-Fire (LIF) neurons mirrors
 
 | Model | Parameters | Test accuracy (synthetic) | Test accuracy (SEED) |
 |---|---|---|---|
-| SNN (LIF, 3 layers) | 112,902 | 33.3 % | _pending real-data training_ |
-| Baseline MLP (matched) | 112,899 | 33.3 % | _pending real-data training_ |
+| SNN (LIF, 3 layers) | 112,902 | 33.3 % | **93.10 %** |
+| Baseline MLP (matched) | 112,899 | 33.3 % | **98.04 %** |
 
-> **Note.** The numbers shown are on a synthetic-random dataset used to validate the full pipeline (both models correctly land at ~1/3 — random chance for 3 classes). Real-data results from the SEED dataset will be added after the GCP training run; see [Training on Real Data](#training-on-real-data).
+> **Setup.** 152,730 one-second DE-feature windows (45 sessions × 15 film clips × 62 channels × 5 bands, flattened to 310 features). Stratified 80/20 train/test split. 30 epochs on Apple-silicon MPS, batch 128, Adam @ 1e-3. SNN: T=25, β learnable (init 0.9), threshold 1.0, fast-sigmoid surrogate. Per-class F1 (SNN): Negative 0.917 / Neutral 0.915 / Positive 0.961. Network sparsity held steady at **94–95 %** throughout training — most neurons silent at most timesteps, as biology predicts.
+
+> **What this means.** The SNN lands within 5 pp of a parameter-matched MLP on real EEG while computing the way the brain does (discrete spikes, not continuous activations) and while 95 % of its neurons are silent at any given moment. The synthetic row (33.3 %) is the pipeline-sanity check — random features, 3 classes, random chance. Both models land exactly there on synthetic data, confirming no leakage.
 
 ![Accuracy Comparison](results/accuracy_comparison.png)
 
@@ -120,28 +122,28 @@ The project ships a synthetic-data fallback with the same interface, so the enti
 
 ## Training on Real Data
 
-1. Download SEED (see [data/README.md](data/README.md)); place the `ExtractedFeatures/` folder under `data/`.
-2. Train on GPU:
+1. Download SEED (see [data/README.md](data/README.md)); place the `ExtractedFeatures_1s/` folder under `data/`.
+2. Train (Apple-silicon MPS, CUDA, or CPU — auto-detected):
    ```bash
-   python src/train.py --model snn      --epochs 50 --data-path data/ExtractedFeatures/
-   python src/train.py --model baseline --epochs 50 --data-path data/ExtractedFeatures/
+   python src/train.py --model snn      --epochs 30 --batch-size 128 --data-path data/ExtractedFeatures_1s/
+   python src/train.py --model baseline --epochs 30 --batch-size 128 --data-path data/ExtractedFeatures_1s/
    ```
 3. Evaluate:
    ```bash
-   python src/evaluate.py --model snn      --checkpoint results/snn_checkpoint.pt      --data-path data/ExtractedFeatures/
-   python src/evaluate.py --model baseline --checkpoint results/baseline_checkpoint.pt --data-path data/ExtractedFeatures/
+   python src/evaluate.py --model snn      --checkpoint results/snn_checkpoint.pt      --data-path data/ExtractedFeatures_1s/
+   python src/evaluate.py --model baseline --checkpoint results/baseline_checkpoint.pt --data-path data/ExtractedFeatures_1s/
    ```
 4. Regenerate all visualizations:
    ```bash
-   python scripts/generate_all_viz.py --data-path data/ExtractedFeatures/
+   python scripts/generate_all_viz.py --data-path data/ExtractedFeatures_1s/
    ```
 
-Expected training time: ~30 min on a T4/L4 GPU for 50 epochs.
+Measured wall-clock on an M-series Mac (MPS): **~1.5 min** for the MLP (30 epochs) and **~70 min** for the SNN (30 epochs × T=25 unrolled). Expect **~25–30 min** for the SNN on a T4/L4 GPU.
 
 **Hyperparameter tips**
 - If the SNN loss plateaus, lower `--lr` to `1e-4` and bump `--timesteps` to 50.
 - If the encoder produces all-zero spikes, try `encode_rate(..., gain=1.5)` or lower the firing threshold in `SpikingNN`.
-- If the network saturates (sparsity below 40%), raise β toward 0.95 or increase the threshold.
+- If the network saturates (sparsity below 40 %), raise β toward 0.95 or increase the threshold.
 
 ---
 

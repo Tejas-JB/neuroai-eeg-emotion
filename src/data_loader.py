@@ -121,20 +121,23 @@ def _reshape_trial(arr: np.ndarray, n_features: int = N_FEATURES_DEFAULT) -> np.
 def _extract_trials(mat: dict) -> list[np.ndarray]:
     """Return per-trial DE matrices (N_windows, 310) from a session .mat dict.
 
-    Detects trial keys by regex (e.g. 'de_LDS1', 'de_movingAve12') and orders
-    them by trailing integer so trial index matches the label order.
+    SEED ExtractedFeatures files contain several DE variants per trial
+    (``de_LDS{i}`` and ``de_movingAve{i}``) plus non-DE features (asm, dasm,
+    dcau, psd, rasm). We select ``de_LDS{i}`` — the Linear Dynamical System
+    smoothed DE feature canonical to Zheng & Lu (2015). Fallback: ``de_movingAve``
+    if a file lacks LDS keys.
     """
-    trial_pattern = re.compile(r"^(?:de_|DE_)\w*?(\d+)$")
-    hits: list[Tuple[int, str]] = []
-    for k in mat:
-        m = trial_pattern.match(k)
-        if m:
-            hits.append((int(m.group(1)), k))
+    lds_pattern = re.compile(r"^de_LDS(\d+)$")
+    mav_pattern = re.compile(r"^de_movingAve(\d+)$")
 
+    def _collect(pattern: re.Pattern) -> list[Tuple[int, str]]:
+        return [(int(m.group(1)), k) for k in mat if (m := pattern.match(k))]
+
+    hits = _collect(lds_pattern) or _collect(mav_pattern)
     if not hits:
         raise KeyError(
-            f"No DE trial keys found. Session keys were: {sorted(mat.keys())}. "
-            "Expected keys matching /^(de_|DE_)\\w*?\\d+$/."
+            f"No de_LDS* or de_movingAve* trial keys found. "
+            f"Session keys: {sorted(k for k in mat if k.startswith('de_'))[:6]}..."
         )
 
     hits.sort(key=lambda t: t[0])

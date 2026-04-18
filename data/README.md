@@ -16,11 +16,14 @@ The dataset is free for academic use but requires a registration request.
 
 ## 2. Download
 
-Only the `ExtractedFeatures/` folder is required — it contains the per-session
-Differential Entropy (DE) feature `.mat` files that this pipeline consumes. You
-do **not** need the raw `Preprocessed_EEG/` signals.
+Only the `ExtractedFeatures_1s/` folder is required — it contains the
+per-session Differential Entropy (DE) feature `.mat` files that this pipeline
+consumes, computed on 1-second windows. (The 4-second `ExtractedFeatures/`
+variant also works; pass `--data-path data/ExtractedFeatures/`.) You do
+**not** need the raw `Preprocessed_EEG/` signals.
 
-Also download `label.mat` (the 15-element emotion label vector).
+`label.mat` ships inside `ExtractedFeatures_1s/`; the loader picks it up
+automatically.
 
 ## 3. Place the files
 
@@ -29,12 +32,13 @@ The expected directory layout under this project root:
 ```
 data/
 ├── README.md                    # this file
-├── label.mat                    # 15 labels in {-1, 0, +1}
-└── ExtractedFeatures/
+└── ExtractedFeatures_1s/
+    ├── label.mat                # 15 labels in {-1, 0, +1}
+    ├── readme.txt               # SEED citation
     ├── 1_20131027.mat
     ├── 2_20140404.mat
     ├── ...                      # 45 session files total
-    └── 15_20140411.mat
+    └── 15_20131105.mat
 ```
 
 The loader (`src/data_loader.py`) handles both the standard `scipy.io.loadmat`
@@ -47,9 +51,9 @@ you do not need to pre-process anything.
 From the project root:
 
 ```bash
-python src/train.py --model snn      --epochs 50 --data-path data/ExtractedFeatures/
+python src/train.py --model snn      --epochs 50 --data-path data/ExtractedFeatures_1s/
 python src/evaluate.py --model snn   --checkpoint results/snn_checkpoint.pt \
-                                     --data-path data/ExtractedFeatures/
+                                     --data-path data/ExtractedFeatures_1s/
 ```
 
 See the top-level README's **Training on Real Data** section for the full
